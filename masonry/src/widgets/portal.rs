@@ -5,14 +5,15 @@ use std::ops::Range;
 
 use accesskit::{Node, Role};
 use dpi::PhysicalPosition;
+use masonry_core::core::{DynWidgetMut, DynWidgetPod};
 use tracing::{Span, trace_span};
 use vello::Scene;
 use vello::kurbo::{Point, Rect, Size, Vec2};
 
 use crate::core::{
-    AccessCtx, AccessEvent, BoxConstraints, ChildrenIds, ComposeCtx, EventCtx, FromDynWidget,
-    LayoutCtx, NewWidget, PaintCtx, PointerEvent, PropertiesMut, PropertiesRef, RegisterCtx,
-    ScrollDelta, TextEvent, Update, UpdateCtx, Widget, WidgetId, WidgetMut, WidgetPod,
+    AccessCtx, AccessEvent, BoxConstraints, ChildrenIds, ComposeCtx, EventCtx, LayoutCtx,
+    NewWidget, PaintCtx, PointerEvent, PropertiesMut, PropertiesRef, RegisterCtx, ScrollDelta,
+    TextEvent, Update, UpdateCtx, Widget, WidgetId, WidgetMut, WidgetPod,
 };
 use crate::widgets::{Axis, ScrollBar};
 
@@ -22,8 +23,8 @@ use crate::widgets::{Axis, ScrollBar};
 // Conceptually, a Portal is a widget giving a restricted view of a child widget
 // Imagine a very large widget, and a rect that represents the part of the widget we see
 #[expect(missing_docs, reason = "TODO")]
-pub struct Portal<W: Widget + ?Sized> {
-    child: WidgetPod<W>,
+pub struct Portal {
+    child: DynWidgetPod,
     // TODO - differentiate between the "explicit" viewport pos determined
     // by user input, and the computed viewport pos that may change based
     // on re-layouts
@@ -40,11 +41,11 @@ pub struct Portal<W: Widget + ?Sized> {
 }
 
 // --- MARK: BUILDERS
-impl<W: Widget + ?Sized> Portal<W> {
+impl Portal {
     #[expect(missing_docs, reason = "TODO")]
-    pub fn new(child: NewWidget<W>) -> Self {
+    pub fn new(child: NewWidget<impl Widget>) -> Self {
         Self {
-            child: child.to_pod(),
+            child: child.to_dyn_pod(),
             viewport_pos: Point::ORIGIN,
             constrain_horizontal: false,
             constrain_vertical: false,
@@ -125,7 +126,7 @@ pub(crate) fn compute_pan_range(mut viewport: Range<f64>, target: Range<f64>) ->
     viewport
 }
 
-impl<W: Widget + ?Sized> Portal<W> {
+impl Portal {
     // TODO - rename
     fn set_viewport_pos_raw(&mut self, portal_size: Size, content_size: Size, pos: Point) -> bool {
         let viewport_max_pos =
@@ -165,10 +166,10 @@ impl<W: Widget + ?Sized> Portal<W> {
 }
 
 // --- MARK: WIDGETMUT
-impl<W: Widget + FromDynWidget + ?Sized> Portal<W> {
+impl Portal {
     #[expect(missing_docs, reason = "TODO")]
-    pub fn child_mut<'t>(this: &'t mut WidgetMut<'_, Self>) -> WidgetMut<'t, W> {
-        this.ctx.get_mut(&mut this.widget.child)
+    pub fn child_mut<'t>(this: &'t mut WidgetMut<'_, Self>) -> DynWidgetMut<'t> {
+        this.ctx.get_mut_dyn(&mut this.widget.child)
     }
 
     #[expect(missing_docs, reason = "TODO")]
@@ -212,7 +213,12 @@ impl<W: Widget + FromDynWidget + ?Sized> Portal<W> {
     #[expect(missing_docs, reason = "TODO")]
     pub fn set_viewport_pos(this: &mut WidgetMut<'_, Self>, position: Point) -> bool {
         let portal_size = this.ctx.size();
-        let content_size = this.ctx.get_mut(&mut this.widget.child).ctx.size();
+        let content_size = this
+            .ctx
+            .get_mut_dyn(&mut this.widget.child)
+            .widget_mut
+            .ctx
+            .size();
 
         let pos_changed = this
             .widget
@@ -255,7 +261,7 @@ impl<W: Widget + FromDynWidget + ?Sized> Portal<W> {
 }
 
 // --- MARK: IMPL WIDGET
-impl<W: Widget + FromDynWidget + ?Sized> Widget for Portal<W> {
+impl Widget for Portal {
     fn on_pointer_event(
         &mut self,
         ctx: &mut EventCtx<'_>,
@@ -263,7 +269,7 @@ impl<W: Widget + FromDynWidget + ?Sized> Widget for Portal<W> {
         event: &PointerEvent,
     ) {
         let portal_size = ctx.size();
-        let content_size = ctx.get_raw_ref(&mut self.child).ctx().size();
+        let content_size = ctx.get_raw_ref(&mut self.child.pod).ctx().size();
 
         match *event {
             PointerEvent::Scroll { delta, .. } => {
@@ -347,7 +353,7 @@ impl<W: Widget + FromDynWidget + ?Sized> Widget for Portal<W> {
     }
 
     fn register_children(&mut self, ctx: &mut RegisterCtx<'_>) {
-        ctx.register_child(&mut self.child);
+        ctx.register_child(&mut self.child.pod);
         ctx.register_child(&mut self.scrollbar_horizontal);
         ctx.register_child(&mut self.scrollbar_vertical);
     }
@@ -356,7 +362,7 @@ impl<W: Widget + FromDynWidget + ?Sized> Widget for Portal<W> {
         match event {
             Update::RequestPanToChild(target) => {
                 let portal_size = ctx.size();
-                let content_size = ctx.get_raw_ref(&mut self.child).ctx().size();
+                let content_size = ctx.get_raw_ref(&mut self.child.pod).ctx().size();
 
                 self.pan_viewport_to_raw(portal_size, content_size, *target);
                 ctx.request_compose();
@@ -393,7 +399,7 @@ impl<W: Widget + FromDynWidget + ?Sized> Widget for Portal<W> {
 
         let child_bc = BoxConstraints::new(min_child_size, max_child_size);
 
-        let content_size = ctx.run_layout(&mut self.child, &child_bc);
+        let content_size = ctx.run_layout(&mut self.child.pod, &child_bc);
         let portal_size = bc.constrain(content_size);
 
         // TODO - document better
@@ -403,7 +409,7 @@ impl<W: Widget + FromDynWidget + ?Sized> Widget for Portal<W> {
 
         ctx.set_clip_path(portal_size.to_rect());
 
-        ctx.place_child(&mut self.child, Point::ZERO);
+        ctx.place_child(&mut self.child.pod, Point::ZERO);
 
         self.scrollbar_horizontal_visible =
             !self.constrain_horizontal && portal_size.width < content_size.width;
@@ -454,7 +460,7 @@ impl<W: Widget + FromDynWidget + ?Sized> Widget for Portal<W> {
     }
 
     fn compose(&mut self, ctx: &mut ComposeCtx<'_>) {
-        ctx.set_child_scroll_translation(&mut self.child, Vec2::new(0.0, -self.viewport_pos.y));
+        ctx.set_child_scroll_translation(&mut self.child.pod, Vec2::new(0.0, -self.viewport_pos.y));
     }
 
     fn paint(&mut self, _ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, _scene: &mut Scene) {}
@@ -494,7 +500,7 @@ impl<W: Widget + FromDynWidget + ?Sized> Widget for Portal<W> {
 
     fn children_ids(&self) -> ChildrenIds {
         ChildrenIds::from_slice(&[
-            self.child.id(),
+            self.child.pod.id(),
             self.scrollbar_vertical.id(),
             self.scrollbar_horizontal.id(),
         ])
@@ -563,7 +569,7 @@ mod tests {
         assert_render_snapshot!(harness, "portal_button_list_no_scroll");
 
         harness.edit_root_widget(|mut portal| {
-            let mut portal = portal.downcast::<Portal<Flex>>();
+            let mut portal = portal.downcast::<Portal>();
             Portal::set_viewport_pos(&mut portal, Point::new(0.0, 130.0))
         });
 
@@ -571,7 +577,7 @@ mod tests {
 
         let item_3_rect = harness.get_widget(item_3_id).ctx().local_layout_rect();
         harness.edit_root_widget(|mut portal| {
-            let mut portal = portal.downcast::<Portal<Flex>>();
+            let mut portal = portal.downcast::<Portal>();
             Portal::pan_viewport_to(&mut portal, item_3_rect);
         });
 
@@ -579,7 +585,7 @@ mod tests {
 
         let item_13_rect = harness.get_widget(item_13_id).ctx().local_layout_rect();
         harness.edit_root_widget(|mut portal| {
-            let mut portal = portal.downcast::<Portal<Flex>>();
+            let mut portal = portal.downcast::<Portal>();
             Portal::pan_viewport_to(&mut portal, item_13_rect);
         });
 
