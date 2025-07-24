@@ -14,9 +14,9 @@ use vello::kurbo::{Affine, Insets, Point, Rect, Size, Vec2};
 
 use crate::app::{MutateCallback, RenderRootSignal, RenderRootState};
 use crate::core::{
-    AllowRawMut, BoxConstraints, BrushIndex, DefaultProperties, ErasedAction, FromDynWidget,
-    NewWidget, PropertiesMut, PropertiesRef, ResizeDirection, Widget, WidgetArenaMut,
-    WidgetArenaRef, WidgetId, WidgetMut, WidgetPod, WidgetRef, WidgetState,
+    AllowRawMut, BoxConstraints, BrushIndex, DefaultProperties, DynWidgetMut, DynWidgetPod,
+    ErasedAction, FromDynWidget, NewWidget, PropertiesMut, PropertiesRef, ResizeDirection, Widget,
+    WidgetArenaMut, WidgetArenaRef, WidgetId, WidgetMut, WidgetPod, WidgetRef, WidgetState,
 };
 use crate::debug_panic;
 use crate::passes::layout::run_layout_on;
@@ -249,6 +249,13 @@ impl MutateCtx<'_> {
         WidgetMut {
             ctx: child_ctx,
             widget: Child::from_dyn_mut(&mut **child_mut.item).unwrap(),
+        }
+    }
+
+    /// Return a [`DynWidgetMut`] to a child widget.
+    pub fn get_mut_dyn<'c>(&'c mut self, child: &'c mut DynWidgetPod) -> DynWidgetMut<'c> {
+        DynWidgetMut {
+            widget_mut: self.get_mut(&mut child.pod),
         }
     }
 
