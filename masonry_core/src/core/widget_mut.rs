@@ -7,10 +7,6 @@ use vello::kurbo::Affine;
 
 use crate::core::{FromDynWidget, MutateCtx, Property, Widget};
 
-pub struct DynWidgetMut<'a> {
-    pub widget_mut: WidgetMut<'a, dyn Widget>,
-}
-
 /// A rich mutable reference to a [`Widget`].
 ///
 /// In Masonry, widgets can't be mutated directly.
@@ -34,6 +30,9 @@ pub struct WidgetMut<'a, W: Widget + ?Sized> {
     /// A context handle that points to the widget state and other relevant data.
     pub ctx: MutateCtx<'a>,
 }
+
+/// A dynamic version of [`WidgetMut`], specifically a `WidgetMut<dyn Widget>`.
+pub type DynWidgetMut<'a> = WidgetMut<'a, dyn Widget>;
 
 impl<W: Widget + ?Sized> Drop for WidgetMut<'_, W> {
     fn drop(&mut self) {

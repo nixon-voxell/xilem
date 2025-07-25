@@ -35,7 +35,7 @@ where
     State: 'static,
     Action: 'static,
 {
-    type Element = Pod<widgets::Portal<Child::Widget>>;
+    type Element = Pod<widgets::Portal>;
     type ViewState = Child::ViewState;
 
     fn build(&self, ctx: &mut ViewCtx, app_state: &mut State) -> (Self::Element, Self::ViewState) {
@@ -54,9 +54,14 @@ where
         mut element: Mut<'_, Self::Element>,
         app_state: &mut State,
     ) {
-        let child_element = widgets::Portal::child_mut(&mut element);
-        self.child
-            .rebuild(&prev.child, view_state, ctx, child_element, app_state);
+        let mut child_element = widgets::Portal::child_mut(&mut element);
+        self.child.rebuild(
+            &prev.child,
+            view_state,
+            ctx,
+            child_element.downcast(),
+            app_state,
+        );
     }
 
     fn teardown(
@@ -66,9 +71,9 @@ where
         mut element: Mut<'_, Self::Element>,
         app_state: &mut State,
     ) {
-        let child_element = widgets::Portal::child_mut(&mut element);
+        let mut child_element = widgets::Portal::child_mut(&mut element);
         self.child
-            .teardown(view_state, ctx, child_element, app_state);
+            .teardown(view_state, ctx, child_element.downcast(), app_state);
     }
 
     fn message(

@@ -4,14 +4,15 @@
 //! A widget which splits an area in two, with a settable ratio, and optional draggable resizing.
 
 use accesskit::{Node, Role};
+use masonry_core::core::{DynWidgetMut, DynWidgetPod};
 use tracing::{Span, trace_span, warn};
 use vello::Scene;
 use vello::kurbo::{Line, Point, Rect, Size};
 
 use crate::core::{
-    AccessCtx, AccessEvent, BoxConstraints, ChildrenIds, CursorIcon, EventCtx, FromDynWidget,
-    LayoutCtx, NewWidget, PaintCtx, PointerEvent, PropertiesMut, PropertiesRef, QueryCtx,
-    RegisterCtx, TextEvent, Widget, WidgetId, WidgetMut, WidgetPod,
+    AccessCtx, AccessEvent, BoxConstraints, ChildrenIds, CursorIcon, EventCtx, LayoutCtx,
+    NewWidget, PaintCtx, PointerEvent, PropertiesMut, PropertiesRef, QueryCtx, RegisterCtx,
+    TextEvent, Widget, WidgetId, WidgetMut,
 };
 use crate::peniko::Color;
 use crate::theme;
@@ -21,11 +22,7 @@ use crate::widgets::flex::Axis;
 /// A container containing two other widgets, splitting the area either horizontally or vertically.
 ///
 #[doc = include_screenshot!("split_columns.png", "Split panel with two labels.")]
-pub struct Split<ChildA, ChildB>
-where
-    ChildA: Widget + ?Sized,
-    ChildB: Widget + ?Sized,
-{
+pub struct Split {
     split_axis: Axis,
     split_point_chosen: f64,
     split_point_effective: f64,
@@ -38,14 +35,17 @@ where
     /// bar was clicked. This is used to ensure a click without mouse move is a no-op,
     /// instead of re-centering the bar on the mouse.
     click_offset: f64,
-    child1: WidgetPod<ChildA>,
-    child2: WidgetPod<ChildB>,
+    child1: DynWidgetPod,
+    child2: DynWidgetPod,
 }
 
 // --- MARK: BUILDERS
-impl<ChildA: Widget + ?Sized, ChildB: Widget + ?Sized> Split<ChildA, ChildB> {
+impl Split {
     /// Create a new split panel.
-    pub fn new(child1: NewWidget<ChildA>, child2: NewWidget<ChildB>) -> Self {
+    pub fn new(
+        child1: NewWidget<impl Widget + ?Sized>,
+        child2: NewWidget<impl Widget + ?Sized>,
+    ) -> Self {
         Self {
             split_axis: Axis::Horizontal,
             split_point_chosen: 0.5,
@@ -56,8 +56,8 @@ impl<ChildA: Widget + ?Sized, ChildB: Widget + ?Sized> Split<ChildA, ChildB> {
             solid: false,
             draggable: true,
             click_offset: 0.0,
-            child1: child1.to_pod(),
-            child2: child2.to_pod(),
+            child1: child1.to_dyn_pod(),
+            child2: child2.to_dyn_pod(),
         }
     }
 
@@ -141,7 +141,7 @@ impl<ChildA: Widget + ?Sized, ChildB: Widget + ?Sized> Split<ChildA, ChildB> {
 }
 
 // --- MARK: INTERNALS
-impl<ChildA: Widget + ?Sized, ChildB: Widget + ?Sized> Split<ChildA, ChildB> {
+impl Split {
     /// Returns the size of the splitter bar area.
     #[inline]
     fn bar_area(&self) -> f64 {
@@ -290,18 +290,14 @@ impl<ChildA: Widget + ?Sized, ChildB: Widget + ?Sized> Split<ChildA, ChildB> {
 // FIXME - Add unit tests for WidgetMut<Split>
 
 // --- MARK: WIDGETMUT
-impl<ChildA, ChildB> Split<ChildA, ChildB>
-where
-    ChildA: Widget + FromDynWidget + ?Sized,
-    ChildB: Widget + FromDynWidget + ?Sized,
-{
+impl Split {
     /// Get a mutable reference to the first child widget.
-    pub fn child1_mut<'t>(this: &'t mut WidgetMut<'_, Self>) -> WidgetMut<'t, ChildA> {
+    pub fn child1_mut<'t>(this: &'t mut WidgetMut<'_, Self>) -> DynWidgetMut<'t> {
         this.ctx.get_mut(&mut this.widget.child1)
     }
 
     /// Get a mutable reference to the second child widget.
-    pub fn child2_mut<'t>(this: &'t mut WidgetMut<'_, Self>) -> WidgetMut<'t, ChildB> {
+    pub fn child2_mut<'t>(this: &'t mut WidgetMut<'_, Self>) -> DynWidgetMut<'t> {
         this.ctx.get_mut(&mut this.widget.child2)
     }
 
@@ -383,11 +379,7 @@ where
 }
 
 // --- MARK: IMPL WIDGET
-impl<ChildA, ChildB> Widget for Split<ChildA, ChildB>
-where
-    ChildA: Widget + ?Sized,
-    ChildB: Widget + ?Sized,
-{
+impl Widget for Split {
     fn on_pointer_event(
         &mut self,
         ctx: &mut EventCtx<'_>,
@@ -675,7 +667,7 @@ mod tests {
             );
 
             harness.edit_root_widget(|mut splitter| {
-                let mut splitter = splitter.downcast::<Split<Label, Label>>();
+                let mut splitter = splitter.downcast::<Split>();
 
                 Split::set_split_point(&mut splitter, 0.3);
                 Split::set_min_size(&mut splitter, 40.0, 10.0);

@@ -254,9 +254,7 @@ impl MutateCtx<'_> {
 
     /// Return a [`DynWidgetMut`] to a child widget.
     pub fn get_mut_dyn<'c>(&'c mut self, child: &'c mut DynWidgetPod) -> DynWidgetMut<'c> {
-        DynWidgetMut {
-            widget_mut: self.get_mut(&mut child.pod),
-        }
+        self.get_mut(child)
     }
 
     pub(crate) fn reborrow_mut(&mut self) -> MutateCtx<'_> {

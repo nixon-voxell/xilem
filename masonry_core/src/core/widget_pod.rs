@@ -5,10 +5,6 @@ use vello::kurbo::Affine;
 
 use crate::core::{Properties, Widget, WidgetId};
 
-pub struct DynWidgetPod {
-    pub pod: WidgetPod<dyn Widget>,
-}
-
 /// A container for one widget in the hierarchy.
 ///
 /// Generally, container widgets don't contain other widgets directly,
@@ -18,6 +14,9 @@ pub struct WidgetPod<W: ?Sized> {
     id: WidgetId,
     inner: WidgetPodInner<W>,
 }
+
+/// A dynamic version of [`WidgetPod`], specifically a `WidgetPod<dyn Widget>`.
+pub type DynWidgetPod = WidgetPod<dyn Widget>;
 
 /// A container for a widget yet to be inserted.
 ///
@@ -130,9 +129,7 @@ impl<W: Widget + ?Sized> NewWidget<W> {
 
     /// Create a type-erased `DynWidgetPod` which will be added to the widget tree.
     pub fn to_dyn_pod(self) -> DynWidgetPod {
-        DynWidgetPod {
-            pod: self.erased().to_pod(),
-        }
+        self.erased().to_pod()
     }
 
     /// Get the id of the widget.

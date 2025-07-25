@@ -9,10 +9,6 @@ use vello::kurbo::Point;
 
 use crate::core::{PropertiesRef, Property, QueryCtx, Widget, WidgetArenaRef, WidgetId};
 
-pub struct DynWidgetRef<'a> {
-    widget_ref: WidgetRef<'a, dyn Widget>,
-}
-
 /// A rich reference to a [`Widget`].
 ///
 /// Widgets in Masonry are bundled with additional metadata.
@@ -29,6 +25,9 @@ pub struct WidgetRef<'w, W: Widget + ?Sized> {
     pub(crate) ctx: QueryCtx<'w>,
     pub(crate) widget: &'w W,
 }
+
+/// A dynamic version of [`WidgetRef`], specifically a `WidgetRef<dyn Widget>`.
+pub type DynWidgetRef<'a> = WidgetRef<'a, dyn Widget>;
 
 // --- MARK: TRAIT IMPLS
 

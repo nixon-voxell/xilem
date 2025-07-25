@@ -172,7 +172,7 @@ where
     ChildA: WidgetView<State, Action>,
     ChildB: WidgetView<State, Action>,
 {
-    type Element = Pod<widgets::Split<ChildA::Widget, ChildB::Widget>>;
+    type Element = Pod<widgets::Split>;
 
     type ViewState = (ChildA::ViewState, ChildB::ViewState);
 
@@ -233,23 +233,23 @@ where
         }
 
         ctx.with_id(CHILD1_VIEW_ID, |ctx| {
-            let child1_element = widgets::Split::child1_mut(&mut element);
+            let mut child1_element = widgets::Split::child1_mut(&mut element);
             self.child1.rebuild(
                 &prev.child1,
                 &mut view_state.0,
                 ctx,
-                child1_element,
+                child1_element.downcast(),
                 app_state,
             );
         });
 
         ctx.with_id(CHILD2_VIEW_ID, |ctx| {
-            let child2_element = widgets::Split::child2_mut(&mut element);
+            let mut child2_element = widgets::Split::child2_mut(&mut element);
             self.child2.rebuild(
                 &prev.child2,
                 &mut view_state.1,
                 ctx,
-                child2_element,
+                child2_element.downcast(),
                 app_state,
             );
         });
@@ -262,13 +262,17 @@ where
         mut element: xilem_core::Mut<'_, Self::Element>,
         app_state: &mut State,
     ) {
-        let child1_element = widgets::Split::child1_mut(&mut element);
-        self.child1
-            .teardown(&mut view_state.0, ctx, child1_element, app_state);
+        {
+            let mut child1_element = widgets::Split::child1_mut(&mut element);
+            self.child1
+                .teardown(&mut view_state.0, ctx, child1_element.downcast(), app_state);
+        }
 
-        let child2_element = widgets::Split::child2_mut(&mut element);
-        self.child2
-            .teardown(&mut view_state.1, ctx, child2_element, app_state);
+        {
+            let mut child2_element = widgets::Split::child2_mut(&mut element);
+            self.child2
+                .teardown(&mut view_state.1, ctx, child2_element.downcast(), app_state);
+        }
     }
 
     fn message(

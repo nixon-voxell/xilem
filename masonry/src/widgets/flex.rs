@@ -6,6 +6,7 @@
 use std::any::TypeId;
 
 use accesskit::{Node, Role};
+use masonry_core::core::DynWidgetPod;
 use tracing::{Span, trace_span};
 use vello::Scene;
 use vello::kurbo::common::FloatExt;
@@ -107,11 +108,11 @@ struct Spacing {
 
 enum Child {
     Fixed {
-        widget: WidgetPod<dyn Widget>,
+        widget: DynWidgetPod,
         alignment: Option<CrossAxisAlignment>,
     },
     Flex {
-        widget: WidgetPod<dyn Widget>,
+        widget: DynWidgetPod,
         alignment: Option<CrossAxisAlignment>,
         flex: f64,
     },

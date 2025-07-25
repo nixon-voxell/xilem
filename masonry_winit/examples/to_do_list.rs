@@ -36,7 +36,7 @@ impl AppDriver for Driver {
             ctx.render_root(window_id).edit_root_widget(|mut root| {
                 let mut portal = root.downcast::<Portal>();
                 let mut flex = Portal::child_mut(&mut portal);
-                let mut flex = flex.widget_mut.downcast();
+                let mut flex = flex.downcast();
                 Flex::add_child(&mut flex, Label::new(self.next_task.clone()).with_auto_id());
 
                 let mut first_row = Flex::child_mut(&mut flex, 0).unwrap();
