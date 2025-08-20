@@ -154,6 +154,11 @@ impl<W: Widget + ?Sized> NewWidget<W> {
     pub fn id(&self) -> WidgetId {
         self.id
     }
+
+    /// Get the [`TypeId`] of the widget's action.
+    pub fn action_type(&self) -> TypeId {
+        self.action_type
+    }
 }
 
 impl<W: Widget> WidgetPod<W> {
